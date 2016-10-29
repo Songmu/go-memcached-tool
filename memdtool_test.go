@@ -97,8 +97,8 @@ END
 		t.Errorf("error should be nil but:%s", err.Error())
 	}
 
-	expeced := map[uint64]*SlabStat{
-		1: {
+	expeced := []*SlabStat{
+		{
 			ID:            1,
 			Number:        1,
 			Age:           102976348,
@@ -109,7 +109,7 @@ END
 			TotalChunks:   10922,
 			UsedChunks:    1,
 			FreeChunksEnd: 10921},
-		2: {
+		{
 			ID:            2,
 			Number:        795,
 			Age:           102375571,
@@ -121,7 +121,7 @@ END
 			UsedChunks:    795,
 			FreeChunks:    5710,
 			FreeChunksEnd: 2233},
-		30: {
+		{
 			ID:            30,
 			Number:        1,
 			Age:           52864995,

@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -111,8 +112,8 @@ type SlabStat struct {
 	FreeChunksEnd  uint64
 }
 
-func GetSlabStats(conn io.ReadWriter) (map[uint64]*SlabStat, error) {
-	ret := make(map[uint64]*SlabStat)
+func GetSlabStats(conn io.ReadWriter) ([]*SlabStat, error) {
+	retMap := make(map[int]*SlabStat)
 	fmt.Fprint(conn, "stats items\r\n")
 	scr := bufio.NewScanner(bufio.NewReader(conn))
 	for scr.Scan() {
@@ -132,10 +133,10 @@ func GetSlabStats(conn io.ReadWriter) (map[uint64]*SlabStat, error) {
 		key := fields2[2]
 		slabNum, _ := strconv.ParseUint(fields2[1], 10, 64)
 		value, _ := strconv.ParseUint(fields[2], 10, 64)
-		ss, ok := ret[slabNum]
+		ss, ok := retMap[int(slabNum)]
 		if !ok {
 			ss = &SlabStat{ID: slabNum}
-			ret[slabNum] = ss
+			retMap[int(slabNum)] = ss
 		}
 		switch key {
 		case "number":
@@ -176,10 +177,10 @@ func GetSlabStats(conn io.ReadWriter) (map[uint64]*SlabStat, error) {
 		key := fields2[1]
 		slabNum, _ := strconv.ParseUint(fields2[0], 10, 64)
 		value, _ := strconv.ParseUint(fields[2], 10, 64)
-		ss, ok := ret[slabNum]
+		ss, ok := retMap[int(slabNum)]
 		if !ok {
 			ss = &SlabStat{}
-			ret[slabNum] = ss
+			retMap[int(slabNum)] = ss
 		}
 
 		switch key {
@@ -201,6 +202,16 @@ func GetSlabStats(conn io.ReadWriter) (map[uint64]*SlabStat, error) {
 	}
 	if err := scr.Err(); err != nil {
 		return nil, errors.Wrap(err, "failed to GetSlabStats while scaning stats slabs")
+	}
+
+	keys := make([]int, 0, len(retMap))
+	for i := range retMap {
+		keys = append(keys, i)
+	}
+	sort.Ints(keys)
+	ret := make([]*SlabStat, len(keys))
+	for i, v := range keys {
+		ret[i] = retMap[v]
 	}
 	return ret, nil
 }

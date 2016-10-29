@@ -42,6 +42,7 @@ func (cli *CLI) Run(argv []string) int {
 		log.Println(err.Error())
 		return exitCodeErr
 	}
+	defer conn.Close()
 
 	items, err := GetSlabStats(conn)
 	if err != nil {
@@ -96,8 +97,7 @@ type SlabStat struct {
 	FreeChunksEnd  uint64
 }
 
-func GetSlabStats(conn io.ReadWriteCloser) (map[uint64]*SlabStat, error) {
-	defer conn.Close()
+func GetSlabStats(conn io.ReadWriter) (map[uint64]*SlabStat, error) {
 	ret := make(map[uint64]*SlabStat)
 	fmt.Fprint(conn, "stats items\r\n")
 	scr := bufio.NewScanner(bufio.NewReader(conn))

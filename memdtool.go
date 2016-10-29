@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -23,14 +24,20 @@ type CLI struct {
 	OutStream, ErrStream io.Writer
 }
 
+var helpReg = regexp.MustCompile(`^--?h(?:elp)?$`)
+
 // Run the memdtool
 func (cli *CLI) Run(argv []string) int {
 	log.SetOutput(cli.ErrStream)
 	log.SetFlags(0)
 
-	addr := "localhost:11211"
+	addr := "127.0.0.1:11211"
 	if len(argv) > 0 {
 		addr = argv[0]
+		if helpReg.MatchString(addr) {
+			printHelp(cli.ErrStream)
+			return exitCodeOK
+		}
 	}
 
 	var proto = "tcp"
@@ -77,6 +84,13 @@ func (cli *CLI) Run(argv []string) int {
 		)
 	}
 	return exitCodeOK
+}
+
+func printHelp(w io.Writer) {
+	fmt.Fprint(w, `Usage: memcached-tool <host[:port] | /path/to/socket>
+
+       memcached-tool 127.0.0.1:11211    # shows slabs
+`)
 }
 
 type SlabStat struct {

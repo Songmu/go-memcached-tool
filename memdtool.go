@@ -32,12 +32,20 @@ func (cli *CLI) Run(argv []string) int {
 	log.SetOutput(cli.ErrStream)
 	log.SetFlags(0)
 
+	mode := "display"
 	addr := "127.0.0.1:11211"
 	if len(argv) > 0 {
-		addr = argv[0]
-		if helpReg.MatchString(addr) {
-			printHelp(cli.ErrStream)
-			return exitCodeOK
+		modeCandidate := argv[len(argv)-1]
+		if modeCandidate == "display" || modeCandidate == "dump" {
+			mode = modeCandidate
+			argv = argv[:len(argv)-1]
+		}
+		if len(argv) > 0 {
+			addr = argv[0]
+			if helpReg.MatchString(addr) {
+				printHelp(cli.ErrStream)
+				return exitCodeOK
+			}
 		}
 	}
 
@@ -52,6 +60,16 @@ func (cli *CLI) Run(argv []string) int {
 	}
 	defer conn.Close()
 
+	switch mode {
+	case "display":
+		return cli.display(conn)
+	case "dump":
+		log.Println("still not implemented")
+	}
+	return exitCodeErr
+}
+
+func (cli *CLI) display(conn io.ReadWriter) int {
 	items, err := GetSlabStats(conn)
 	if err != nil {
 		log.Println(err.Error())

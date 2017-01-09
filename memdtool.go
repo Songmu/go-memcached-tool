@@ -32,12 +32,20 @@ func (cli *CLI) Run(argv []string) int {
 	log.SetOutput(cli.ErrStream)
 	log.SetFlags(0)
 
+	mode := "display"
 	addr := "127.0.0.1:11211"
 	if len(argv) > 0 {
-		addr = argv[0]
-		if helpReg.MatchString(addr) {
-			printHelp(cli.ErrStream)
-			return exitCodeOK
+		modeCandidate := argv[len(argv)-1]
+		if modeCandidate == "display" || modeCandidate == "dump" {
+			mode = modeCandidate
+			argv = argv[:len(argv)-1]
+		}
+		if len(argv) > 0 {
+			addr = argv[0]
+			if helpReg.MatchString(addr) {
+				printHelp(cli.ErrStream)
+				return exitCodeOK
+			}
 		}
 	}
 
@@ -52,6 +60,16 @@ func (cli *CLI) Run(argv []string) int {
 	}
 	defer conn.Close()
 
+	switch mode {
+	case "display":
+		return cli.display(conn)
+	case "dump":
+		return cli.dump(conn)
+	}
+	return exitCodeErr
+}
+
+func (cli *CLI) display(conn io.ReadWriter) int {
 	items, err := GetSlabStats(conn)
 	if err != nil {
 		log.Println(err.Error())
@@ -83,6 +101,108 @@ func (cli *CLI) Run(argv []string) int {
 			ss.EvictedTime,
 			ss.Outofmemory,
 		)
+	}
+	return exitCodeOK
+}
+
+func (cli *CLI) dump(conn io.ReadWriter) int {
+	fmt.Fprint(conn, "stats items\r\n")
+	slabItems := make(map[string]uint64)
+	rdr := bufio.NewReader(conn)
+	for {
+		lineBytes, _, err := rdr.ReadLine()
+		if err != nil {
+			log.Println(err.Error())
+			return exitCodeErr
+		}
+		line := string(lineBytes)
+		if line == "END" {
+			break
+		}
+		// ex. STAT items:1:number 1
+		if !strings.Contains(line, ":number ") {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) != 3 {
+			log.Printf("result of `stats items` is strange: %s\n", line)
+			return exitCodeErr
+		}
+		fields2 := strings.Split(fields[1], ":")
+		if len(fields2) != 3 {
+			log.Printf("result of `stats items` is strange: %s\n", line)
+			return exitCodeErr
+		}
+		value, _ := strconv.ParseUint(fields[2], 10, 64)
+		slabItems[fields2[1]] = value
+	}
+
+	var totalItems uint64
+	for _, v := range slabItems {
+		totalItems += v
+	}
+	fmt.Fprintf(cli.ErrStream, "Dumping memcache contents\n")
+	fmt.Fprintf(cli.ErrStream, "  Number of buckets: %d\n", len(slabItems))
+	fmt.Fprintf(cli.ErrStream, "  Number of items  : %d\n", totalItems)
+
+	for k, v := range slabItems {
+		fmt.Fprintf(cli.ErrStream, "Dumping bucket %s - %d total items\n", k, v)
+
+		keyexp := make(map[string]string, int(v))
+		fmt.Fprintf(conn, "stats cachedump %s %d\r\n", k, v)
+		for {
+			lineBytes, _, err := rdr.ReadLine()
+			if err != nil {
+				log.Println(err.Error())
+				return exitCodeErr
+			}
+			line := string(lineBytes)
+			if line == "END" {
+				break
+			}
+			// return format like this
+			// ITEM piyo [1 b; 1483953061 s]
+			fields := strings.Fields(line)
+			if len(fields) == 6 && fields[0] == "ITEM" {
+				keyexp[fields[1]] = fields[4]
+			}
+		}
+
+		for cachekey, exp := range keyexp {
+			fmt.Fprintf(conn, "get %s\r\n", cachekey)
+			for {
+				lineBytes, _, err := rdr.ReadLine()
+				if err != nil {
+					log.Println(err.Error())
+					return exitCodeErr
+				}
+				line := string(lineBytes)
+				if line == "END" {
+					break
+				}
+				// VALUE hoge 0 6
+				// hogege
+				fields := strings.Fields(line)
+				if len(fields) != 4 || fields[0] != "VALUE" {
+					continue
+				}
+				flags := fields[2]
+				sizeStr := fields[3]
+				size, err := strconv.Atoi(sizeStr)
+				if err != nil {
+					log.Println(err.Error())
+					return exitCodeErr
+				}
+				buf := make([]byte, size)
+				_, err = rdr.Read(buf)
+				if err != nil {
+					log.Println(err.Error())
+					return exitCodeErr
+				}
+				fmt.Fprintf(cli.OutStream, "add %s %s %s %s\r\n%s\r\n", cachekey, flags, exp, sizeStr, string(buf))
+				rdr.ReadLine()
+			}
+		}
 	}
 	return exitCodeOK
 }

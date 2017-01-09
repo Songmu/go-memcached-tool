@@ -12,7 +12,7 @@ go-memcached-tool
 
 ## Description
 
-go porting from [memcached-tool](https://github.com/memcached/memcached/blob/master/scripts/memcached-tool) in Perl (only support display mode)
+go porting from [memcached-tool](https://github.com/memcached/memcached/blob/master/scripts/memcached-tool) in Perl (only support display and dump mode)
 
 ## Installation
 

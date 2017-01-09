@@ -188,11 +188,7 @@ func (cli *CLI) dump(conn io.ReadWriter) int {
 				}
 				flags := fields[2]
 				sizeStr := fields[3]
-				size, err := strconv.Atoi(sizeStr)
-				if err != nil {
-					log.Println(err.Error())
-					return exitCodeErr
-				}
+				size, _ := strconv.Atoi(sizeStr)
 				buf := make([]byte, size)
 				_, err = rdr.Read(buf)
 				if err != nil {

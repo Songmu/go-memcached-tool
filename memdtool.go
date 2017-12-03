@@ -214,6 +214,7 @@ Version: %s (rev: %s)
 `, version, revision)
 }
 
+// SlabStat represents slab statuses
 type SlabStat struct {
 	ID             uint64
 	Number         uint64 // Count?
@@ -232,6 +233,7 @@ type SlabStat struct {
 	FreeChunksEnd  uint64
 }
 
+// GetSlabStats takes SlabStats from connection
 func GetSlabStats(conn io.ReadWriter) ([]*SlabStat, error) {
 	retMap := make(map[int]*SlabStat)
 	fmt.Fprint(conn, "stats items\r\n")

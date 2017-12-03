@@ -28,7 +28,7 @@ cover: devel-deps
 	goveralls
 
 build: deps
-	go build -ldflags=$(BUILD_LDFLAGS) ./cmd/go-go-memcached-tool
+	go build -ldflags=$(BUILD_LDFLAGS) ./cmd/go-memcached-tool
 
 crossbuild: devel-deps
 	goxc -pv=v$(shell gobump show -r) -build-ldflags=$(BUILD_LDFLAGS) \

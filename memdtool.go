@@ -204,10 +204,14 @@ func (cli *CLI) dump(conn io.ReadWriter) int {
 }
 
 func printHelp(w io.Writer) {
-	fmt.Fprint(w, `Usage: memcached-tool <host[:port] | /path/to/socket>
+	fmt.Fprintf(w, `Usage: memcached-tool <host[:port] | /path/to/socket> [mode]
 
-       memcached-tool 127.0.0.1:11211    # shows slabs
-`)
+       memcached-tool 127.0.0.1:11211 display # shows slabs
+       memcached-tool 127.0.0.1:11211         # same. (default is display)
+       memcached-tool 127.0.0.1:11211 dump    # dump keys and values
+
+Version: %s (rev: %s)
+`, version, revision)
 }
 
 type SlabStat struct {

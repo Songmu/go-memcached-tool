@@ -204,12 +204,17 @@ func (cli *CLI) dump(conn io.ReadWriter) int {
 }
 
 func printHelp(w io.Writer) {
-	fmt.Fprint(w, `Usage: memcached-tool <host[:port] | /path/to/socket>
+	fmt.Fprintf(w, `Usage: memcached-tool <host[:port] | /path/to/socket> [mode]
 
-       memcached-tool 127.0.0.1:11211    # shows slabs
-`)
+       memcached-tool 127.0.0.1:11211 display # shows slabs
+       memcached-tool 127.0.0.1:11211         # same. (default is display)
+       memcached-tool 127.0.0.1:11211 dump    # dump keys and values
+
+Version: %s (rev: %s)
+`, version, revision)
 }
 
+// SlabStat represents slab statuses
 type SlabStat struct {
 	ID             uint64
 	Number         uint64 // Count?
@@ -228,6 +233,7 @@ type SlabStat struct {
 	FreeChunksEnd  uint64
 }
 
+// GetSlabStats takes SlabStats from connection
 func GetSlabStats(conn io.ReadWriter) ([]*SlabStat, error) {
 	retMap := make(map[int]*SlabStat)
 	fmt.Fprint(conn, "stats items\r\n")

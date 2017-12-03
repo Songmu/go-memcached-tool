@@ -1,0 +1,5 @@
+go-memcached-tool
+.*
+!.gitignore
+!.travis.yml
+dist/
